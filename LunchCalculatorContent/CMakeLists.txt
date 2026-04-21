@@ -10,13 +10,6 @@ qt6_add_qml_module(LunchCalculatorContent
     RESOURCE_PREFIX "/qt/qml"
     QML_FILES
         "App.qml"
-        "MyBillItemManager.ui.qml"
-        "MyOveralTotalItem.ui.qml"
-        "MyParticipantManager.ui.qml"
-        "MyPayerItem.ui.qml"
-        "MyPlaceDateItem.ui.qml"
-        "MySalesServiceTaxItem.ui.qml"
-        "Screen01.ui.qml"
         "PersonNames.qml"
 )
 
