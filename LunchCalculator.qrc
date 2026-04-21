@@ -1,0 +1,20 @@
+<RCC>
+    <qresource>
+        <file>.vscode/settings.json</file>
+        <file>LunchCalculator.qmlproject</file>
+        <file>LunchCalculator/Constants.qml</file>
+        <file>LunchCalculator/EventListModel.qml</file>
+        <file>LunchCalculator/EventListSimulator.qml</file>
+        <file>LunchCalculator/qmldir</file>
+        <file>LunchCalculatorContent/App.qml</file>
+        <file>LunchCalculatorContent/MyBillItemManager.ui.qml</file>
+        <file>LunchCalculatorContent/MyOveralTotalItem.ui.qml</file>
+        <file>LunchCalculatorContent/MyParticipantManager.ui.qml</file>
+        <file>LunchCalculatorContent/MyPayerItem.ui.qml</file>
+        <file>LunchCalculatorContent/MyPlaceDateItem.ui.qml</file>
+        <file>LunchCalculatorContent/MySalesServiceTaxItem.ui.qml</file>
+        <file>LunchCalculatorContent/PersonNames.qml</file>
+        <file>LunchCalculatorContent/Screen01.ui.qml</file>
+        <file>qtquickcontrols2.conf</file>
+    </qresource>
+</RCC>

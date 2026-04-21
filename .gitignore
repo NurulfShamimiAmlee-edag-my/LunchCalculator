@@ -1,0 +1,41 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Qt Creator / Qt Design Studio generated/local files
+*.qtds
+*.user
+*.user.*
+.qtcreator/
+App/autogen/
+
+# Temporary editor backup files
+*.tmp
+*.tmp.*
+
+# VS Code local settings
+.vscode/
+
+# CMake cache and generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled output
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.ilk
+
+# QML compiled cache
+*.qmlc
+*.jsc
+
+# macOS
+.DS_Store
