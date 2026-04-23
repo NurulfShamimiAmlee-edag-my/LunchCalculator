@@ -3,6 +3,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include "LunchCalculator.h"
+#include "ImageExporter.h"
 
 int main(int argc, char *argv[])
 {
@@ -21,6 +22,9 @@ int main(int argc, char *argv[])
     // Create the single controller instance and expose it to QML
     LunchCalculator calculator;
     engine.rootContext()->setContextProperty("calculator", &calculator);
+
+    ImageExporter imageExporter;
+    engine.rootContext()->setContextProperty("imageExporter", &imageExporter);
 
     // Seed some demo data so the UI isn't blank on first launch
     calculator.setPlace("Tealive");

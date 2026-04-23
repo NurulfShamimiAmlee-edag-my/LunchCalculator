@@ -31,6 +31,10 @@ ApplicationWindow {
     readonly property color colPersonTot:  "#1a3a5c"   // same as header
     readonly property color colAlt:        "#eef2f7"   // alternating row tint
 
+    // Row index that should grab focus as soon as its delegate is created.
+    // Set before addItem(); cleared by the delegate itself once focused.
+    property int autoFocusRow: -1
+
     // ── Helpers ─────────────────────────────────────────────────────────
     function fmt(n) { return "MYR " + n.toFixed(2) }
 
@@ -292,6 +296,7 @@ ApplicationWindow {
                     required property int    row
                     required property int    column
                     required property var    display
+                    property Item editField: null   // registered by textCell on load
 
                     Rectangle {
                         anchors.fill: parent
@@ -317,6 +322,26 @@ ApplicationWindow {
                             font.pixelSize: 12
                             background: Item {}
                             verticalAlignment: Text.AlignVCenter
+
+                            Component.onCompleted: {
+                                cellDelegate.editField = this
+                                if (root.autoFocusRow === cellDelegate.row && cellDelegate.column === 0) {
+                                    forceActiveFocus()
+                                    root.autoFocusRow = -1
+                                }
+                            }
+
+                            Keys.onReturnPressed: {
+                                var rowCount = calculator.model.rowCount()
+                                if (cellDelegate.row < rowCount - 1) {
+                                    var nextCell = tableBody.itemAtCell(0, cellDelegate.row + 1)
+                                    if (nextCell && nextCell.editField)
+                                        nextCell.editField.forceActiveFocus()
+                                } else {
+                                    root.autoFocusRow = rowCount
+                                    calculator.addItem()
+                                }
+                            }
 
                             // Keep text in sync with the model whenever this field
                             // is not focused. When the user is typing, the binding
@@ -383,6 +408,16 @@ ApplicationWindow {
                 onClicked: calculator.addItem()
             }
             Item { Layout.fillWidth: true }
+            Button {
+                text: "Copy to Clipboard"
+                onClicked: imageExporter.grabAndCopy(root.contentItem)
+            }
+            Button {
+                text: "Save as PNG"
+                onClicked: imageExporter.grabAndSave(
+                    root.contentItem,
+                    imageExporter.defaultSavePath(calculator.place, calculator.date))
+            }
             Button {
                 text: "New Bill"
                 onClicked: {
@@ -512,6 +547,33 @@ ApplicationWindow {
         }
 
     } // end ColumnLayout
+
+    // ── Toast notification for share actions ─────────────────────────────
+    Popup {
+        id: shareToast
+        property string message: ""
+        anchors.centerIn: Overlay.overlay
+        padding: 12
+        modal: false
+        closePolicy: Popup.NoAutoClose
+
+        background: Rectangle { color: "#222"; radius: 6 }
+        Label { text: shareToast.message; color: "white"; font.pixelSize: 12 }
+
+        Timer {
+            interval: 2500
+            running: shareToast.visible
+            onTriggered: shareToast.close()
+        }
+
+        function show(msg) { message = msg; open() }
+    }
+
+    Connections {
+        target: imageExporter
+        function onCopyDone()     { shareToast.show("Copied to clipboard!") }
+        function onSaveDone(path) { shareToast.show("Saved: " + path)       }
+    }
 
     // ================================================================
     //  MANAGE NAMES DIALOG

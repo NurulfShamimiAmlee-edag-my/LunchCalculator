@@ -23,7 +23,8 @@ qt_standard_project_setup()
 qt_add_executable(${CMAKE_PROJECT_NAME} WIN32
     LunchCalculator.h LunchCalculator.cpp
     LunchModel.h LunchModel.cpp
-    LunchItem.h)
+    LunchItem.h
+    ImageExporter.h ImageExporter.cpp)
 qt_add_resources(${CMAKE_PROJECT_NAME} "configuration"
     PREFIX "/"
     FILES
