@@ -30,6 +30,9 @@ class LunchCalculator : public QObject
     // ── Tax / service settings ────────────────────────────────────────────
     Q_PROPERTY(double   serviceChargePct READ serviceChargePct WRITE setServiceChargePct NOTIFY serviceChargePctChanged)
     Q_PROPERTY(double   sstPct          READ sstPct          WRITE setSstPct          NOTIFY sstPctChanged)
+    // 0 = Unified (SC and SST share the same taxable base — current behaviour)
+    // 1 = SC fixed / SST reduced (SC on pre-discount taxable; SST on post-discount taxable)
+    Q_PROPERTY(int      discountMode    READ discountMode    WRITE setDiscountMode    NOTIFY discountModeChanged)
 
     // ── Model ─────────────────────────────────────────────────────────────
     Q_PROPERTY(LunchModel* model        READ model          CONSTANT)
@@ -57,6 +60,7 @@ public:
     QString     payTo()            const { return m_payTo; }
     double      serviceChargePct() const { return m_serviceChargePct; }
     double      sstPct()           const { return m_sstPct; }
+    int         discountMode()     const { return m_discountMode; }
     LunchModel *model()            const { return m_model; }
 
     double subtotal()      const { return m_subtotal;      }
@@ -75,6 +79,7 @@ public:
     void setPayTo         (const QString &v);
     void setServiceChargePct(double v);
     void setSstPct        (double v);
+    void setDiscountMode  (int v);
     void setReceiptAmt    (double v);
 
     // ── QML-invokable person management ───────────────────────────────────
@@ -93,6 +98,7 @@ signals:
     void payToChanged();
     void serviceChargePctChanged();
     void sstPctChanged();
+    void discountModeChanged();
     void totalsChanged();
     void personsChanged();
     void receiptAmtChanged();
@@ -111,6 +117,7 @@ private:
     // tax settings
     double m_serviceChargePct = 0.0;
     double m_sstPct           = 6.0;
+    int    m_discountMode     = 0;
 
     // computed totals
     double       m_subtotal      = 0.0;

@@ -50,6 +50,14 @@ void LunchCalculator::setSstPct(double v)
     recalculate();
 }
 
+void LunchCalculator::setDiscountMode(int v)
+{
+    if (m_discountMode == v) return;
+    m_discountMode = v;
+    emit discountModeChanged();
+    recalculate();
+}
+
 void LunchCalculator::setReceiptAmt(double v)
 {
     if (qFuzzyCompare(m_receiptAmt, v)) return;
@@ -86,14 +94,15 @@ void LunchCalculator::reset()
 {
     m_model->clear();
 
-    m_place       = "";
-    m_date        = QDate::currentDate().toString("M/d/yyyy");
-    m_payTo       = "";
-    m_receiptAmt  = 0.0;
-    m_subtotal    = 0.0;
+    m_place         = "";
+    m_date          = QDate::currentDate().toString("M/d/yyyy");
+    m_payTo         = "";
+    m_receiptAmt    = 0.0;
+    m_subtotal      = 0.0;
     m_serviceCharge = 0.0;
-    m_sst         = 0.0;
-    m_grandTotal  = 0.0;
+    m_sst           = 0.0;
+    m_grandTotal    = 0.0;
+    m_discountMode  = 0;
     m_personTotals.clear();
 
     emit placeChanged();
@@ -101,6 +110,7 @@ void LunchCalculator::reset()
     emit payToChanged();
     emit receiptAmtChanged();
     emit personsChanged();
+    emit discountModeChanged();
     emit totalsChanged();
 }
 
@@ -112,10 +122,15 @@ void LunchCalculator::reset()
 //  Negative prices (vouchers) are split among all persons who have the
 //  voucher row ticked — same mechanism, works naturally.
 //
-//  SST is applied only to taxable items.
-//  Service charge is applied only to taxable items.
-//  SST base is taxable food only — service charge is NOT compounded into the SST base.
-//  Per-person SC and SST are proportional to each person's taxable food share.
+//  discountMode == 0  (Unified):
+//    SC and SST share the same taxable base — current default behaviour.
+//    Taxable discount items reduce both bases equally.
+//
+//  discountMode == 1  (SST Only):
+//    SC base  = positive taxable items only  (pre-discount)
+//    SST base = all taxable items            (post-discount)
+//    This replicates the common Malaysian restaurant pattern where the
+//    restaurant's discount reduces SST but not service charge.
 
 void LunchCalculator::recalculate()
 {
@@ -123,59 +138,56 @@ void LunchCalculator::recalculate()
     const QStringList      &persons = m_model->persons();
     const int               nPersons = persons.size();
 
-    // Per-person food totals (before tax)
     QList<double> foodShare(nPersons, 0.0);
-    // Per-person taxable food totals
-    QList<double> taxableShare(nPersons, 0.0);
+    QList<double> scShare  (nPersons, 0.0);   // per-person SC taxable share
+    QList<double> sstShare (nPersons, 0.0);   // per-person SST taxable share
 
     double totalFood    = 0.0;
-    double totalTaxable = 0.0;
+    double totalSCBase  = 0.0;
+    double totalSSTBase = 0.0;
 
     for (const LunchItem &item : items) {
-        // Count how many persons ordered this item
         int orderers = 0;
         for (int p = 0; p < nPersons && p < item.personOrders.size(); ++p)
             if (item.personOrders.at(p)) ++orderers;
 
-        if (orderers == 0) continue;   // nobody ordered it — skip
+        if (orderers == 0) continue;
 
         const double share = item.price / orderers;
+        const bool inSCBase = item.taxable &&
+                              (m_discountMode == 0 || item.price >= 0.0);
 
         for (int p = 0; p < nPersons && p < item.personOrders.size(); ++p) {
             if (item.personOrders.at(p)) {
                 foodShare[p] += share;
-                if (item.taxable)
-                    taxableShare[p] += share;
+                if (inSCBase)    scShare [p] += share;
+                if (item.taxable) sstShare[p] += share;
             }
         }
 
-        totalFood    += item.price;
-        if (item.taxable)
-            totalTaxable += item.price;
+        totalFood += item.price;
+        if (inSCBase)     totalSCBase  += item.price;
+        if (item.taxable) totalSSTBase += item.price;
     }
 
-    // Bill-level totals
-    m_subtotal      = totalFood;                                          // all food
-    m_serviceCharge = totalTaxable * (m_serviceChargePct / 100.0);       // taxable food only
-    m_sst           = totalTaxable * (m_sstPct           / 100.0);       // taxable food only, no SC compounding
+    m_subtotal      = totalFood;
+    m_serviceCharge = totalSCBase  * (m_serviceChargePct / 100.0);
+    m_sst           = totalSSTBase * (m_sstPct           / 100.0);
     m_grandTotal    = m_subtotal + m_serviceCharge + m_sst;
 
-    // Per-person totals — both SC and SST scale with taxable food share.
     m_personTotals.clear();
     for (int p = 0; p < nPersons; ++p) {
-        double personServiceCharge = (totalTaxable > 0.0)
-            ? taxableShare[p] / totalTaxable * m_serviceCharge : 0.0;
-        double personSst = (totalTaxable > 0.0)
-            ? taxableShare[p] / totalTaxable * m_sst : 0.0;
-        double personTotal = foodShare[p] + personServiceCharge + personSst;
+        double personSC  = (totalSCBase  > 0.0) ? scShare [p] / totalSCBase  * m_serviceCharge : 0.0;
+        double personSST = (totalSSTBase > 0.0) ? sstShare[p] / totalSSTBase * m_sst           : 0.0;
+        double personTotal = foodShare[p] + personSC + personSST;
 
         QVariantMap entry;
         entry["name"]          = persons.at(p);
-        entry["food"]          = qRound(foodShare[p]    * 100.0) / 100.0;
-        entry["taxableFood"]   = qRound(taxableShare[p] * 100.0) / 100.0;
-        entry["tax"]           = qRound(personSst       * 100.0) / 100.0;
-        entry["serviceCharge"] = qRound(personServiceCharge * 100.0) / 100.0;
-        entry["total"]         = qRound(personTotal     * 100.0) / 100.0;
+        entry["food"]          = qRound(foodShare[p] * 100.0) / 100.0;
+        entry["taxableFood"]   = qRound(sstShare [p] * 100.0) / 100.0;
+        entry["tax"]           = qRound(personSST    * 100.0) / 100.0;
+        entry["serviceCharge"] = qRound(personSC     * 100.0) / 100.0;
+        entry["total"]         = qRound(personTotal  * 100.0) / 100.0;
         m_personTotals.append(entry);
     }
 

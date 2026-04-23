@@ -157,6 +157,23 @@ ApplicationWindow {
                 }
             }
             Item { Layout.columnSpan: 2; Layout.fillWidth: true }
+
+            // Row 5 – Discount Affects
+            Label { text: "Discount Affects" }
+            ComboBox {
+                id: discountModeBox
+                model: ["SC + SST", "SST Only"]
+                currentIndex: calculator.discountMode
+                Layout.fillWidth: true
+                onActivated: calculator.discountMode = currentIndex
+                Connections {
+                    target: calculator
+                    function onDiscountModeChanged() {
+                        discountModeBox.currentIndex = calculator.discountMode
+                    }
+                }
+            }
+            Item { Layout.columnSpan: 2; Layout.fillWidth: true }
         }
 
         // ── Person management toolbar ────────────────────────────────────
@@ -214,17 +231,17 @@ ApplicationWindow {
                 width: 28
 
                 delegate: Button {
+                    required property int row   // 0-based section index, always reliable
                     implicitWidth: 28
                     implicitHeight: 28
                     text: "✕"
                     flat: true
                     font.pixelSize: 10
                     background: Rectangle {
-                        color: hovered ? "#fdd" : (display % 2 === 0 ? "white" : colAlt)
+                        color: hovered ? "#fdd" : (row % 2 === 0 ? "white" : colAlt)
                         border.color: "#ddd"
                     }
-                    // display = section + 1 (1-based), so display-1 is the 0-based row index
-                    onClicked: calculator.removeItem(display - 1)
+                    onClicked: calculator.removeItem(row)
                 }
             }
 
@@ -375,6 +392,7 @@ ApplicationWindow {
                     payToField.text       = ""
                     serviceChargeField.text = calculator.serviceChargePct.toFixed(0) + "%"
                     sstField.text         = calculator.sstPct.toFixed(0) + "%"
+                    discountModeBox.currentIndex = 0
                     receiptAmtField.text  = "0.00"
                 }
             }
