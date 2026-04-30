@@ -6,12 +6,15 @@ A desktop application for splitting lunch bills among colleagues. Handles Malays
 
 ## Features
 
-- Add unlimited bill items with prices and taxable flags
+- Add unlimited bill items with quantity and unit price
+- Independent **SC?** and **SST?** flags per item — an item can be subject to service charge only, SST only, both, or neither
+- Select-all header checkboxes to tick an entire SC? or SST? column in one click
 - Add/remove persons per session
 - Automatic split calculation — items split equally among selected persons
-- Service charge and SST applied to taxable items only (no compounding)
+- Service charge and SST applied independently based on per-item flags (no compounding)
 - Per-person breakdown: food, SC+SST, and total
 - Receipt amount entry with difference indicator (green = overpaid, red = underpaid)
+- **Show/Hide Details** toggle to show or hide Split Count and Cost per Person columns
 - Persistent names list managed in-app — no file editing required
 - "New Bill" button to reset the session without restarting the app
 
@@ -46,7 +49,7 @@ LunchCalculator/
 ├── CMakeLists.txt              # Root build configuration
 ├── LunchCalculator.h/cpp       # Main controller — calculations, totals, reset
 ├── LunchModel.h/cpp            # QAbstractTableModel — items and persons
-├── LunchItem.h/cpp             # Data struct for a single bill item
+├── LunchItem.h                 # Data struct for a single bill item
 ├── App/
 │   ├── main.cpp                # Application entry point
 │   └── CMakeLists.txt
@@ -66,10 +69,35 @@ LunchCalculator/
 2. Set **Service Charge %** and **SST %** (yellow fields)
 3. Add persons using **+ Add Person** — pick from the list or type a custom name
 4. Click **+ Add Item** for each menu item:
-   - Enter the item name and price
-   - Tick **Tax?** if the item is subject to SST and service charge
+   - Enter the item name
+   - Set **Qty** (defaults to 1) and **Unit Price**
+   - Tick **SC?** if the item is subject to service charge
+   - Tick **SST?** if the item is subject to SST
    - Tick the checkboxes under each person's name who ordered that item
 5. Enter the **Receipt Amt** from the actual bill — the **Difference** row shows any discrepancy
+
+> **Tip:** To quickly mark all items in the SC? or SST? column, click the small checkbox in the column header.
+
+### Quantity
+
+When multiple people ordered the same item, enter the count in **Qty** instead of adding separate rows. For example, 3 people each ordering Kopi Ice at MYR 6.20 → Qty=3, Unit Price=6.20, tick all three persons. Each person's share works out to MYR 6.20.
+
+Your existing workflow (Qty=1, enter total price) continues to work unchanged.
+
+### SC? and SST? Flags
+
+Each item independently controls whether service charge and SST apply:
+
+| SC? | SST? | Effect |
+|-----|------|--------|
+| ✓ | ✓ | Both SC and SST applied (most common) |
+| ✗ | ✓ | SST only — e.g. some beverages |
+| ✓ | ✗ | SC only |
+| ✗ | ✗ | Neither — e.g. vouchers, non-taxable items |
+
+### Split Count and Cost per Person
+
+These audit columns are hidden by default to keep the table compact. Click **Show Details** in the item toolbar to reveal them. Click **Hide Details** to collapse them again.
 
 ### Per-Person Totals
 
@@ -107,11 +135,13 @@ readonly property var names: [
 
 | Field | Formula |
 |---|---|
-| Subtotal | Sum of all item prices |
-| Service Charge | Taxable items total × SC% |
-| SST | Taxable items total × SST% |
+| Subtotal | Sum of (Qty × Unit Price) for all items |
+| Service Charge | SC-flagged items total × SC% |
+| SST | SST-flagged items total × SST% |
 | Grand Total | Subtotal + Service Charge + SST |
-| Per-person SC+SST | Proportional to each person's taxable food share |
+| Per-person SC+SST | Proportional to each person's flagged food share |
+
+SC and SST are calculated independently — an item's SC? and SST? flags are separate and do not compound.
 
 ---
 
