@@ -33,7 +33,8 @@ ApplicationWindow {
 
     // Row index that should grab focus as soon as its delegate is created.
     // Set before addItem(); cleared by the delegate itself once focused.
-    property int autoFocusRow: -1
+    property int  autoFocusRow:  -1
+    property bool showDetails:   false
 
     // ── Helpers ─────────────────────────────────────────────────────────
     function fmt(n) { return "MYR " + n.toFixed(2) }
@@ -161,23 +162,6 @@ ApplicationWindow {
                 }
             }
             Item { Layout.columnSpan: 2; Layout.fillWidth: true }
-
-            // Row 5 – Discount Affects
-            Label { text: "Discount Affects" }
-            ComboBox {
-                id: discountModeBox
-                model: ["SC + SST", "SST Only"]
-                currentIndex: calculator.discountMode
-                Layout.fillWidth: true
-                onActivated: calculator.discountMode = currentIndex
-                Connections {
-                    target: calculator
-                    function onDiscountModeChanged() {
-                        discountModeBox.currentIndex = calculator.discountMode
-                    }
-                }
-            }
-            Item { Layout.columnSpan: 2; Layout.fillWidth: true }
         }
 
         // ── Person management toolbar ────────────────────────────────────
@@ -258,12 +242,52 @@ ApplicationWindow {
                 delegate: Rectangle {
                     color: colHeader
                     border.color: "#334"
+
+                    readonly property bool isSelectAll: display === "SC?" || display === "SST?"
+
                     Label {
                         anchors.centerIn: parent
-                        text: display      // provided by headerData()
+                        visible: !parent.isSelectAll
+                        text: display
                         color: colHeaderText
                         font.bold: true
                         font.pixelSize: 11
+                    }
+
+                    Row {
+                        anchors.centerIn: parent
+                        visible: parent.isSelectAll
+                        spacing: 3
+
+                        Rectangle {
+                            width: 13; height: 13
+                            anchors.verticalCenter: parent.verticalCenter
+                            border.color: "white"; border.width: 1; radius: 2
+                            color: "transparent"
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 7; height: 7; radius: 1
+                                color: "white"
+                                visible: display === "SC?" ? calculator.allSC : calculator.allSST
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    if (display === "SC?")
+                                        calculator.model.setAllSC(!calculator.allSC)
+                                    else
+                                        calculator.model.setAllSST(!calculator.allSST)
+                                }
+                            }
+                        }
+
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: display
+                            color: colHeaderText
+                            font.bold: true
+                            font.pixelSize: 11
+                        }
                     }
                 }
             }
@@ -280,10 +304,12 @@ ApplicationWindow {
 
                 columnWidthProvider: function(col) {
                     if (col === 0) return 180   // name
-                    if (col === 1) return 100   // price
-                    if (col === 2) return 50    // tax?
-                    if (col === 3) return 80    // split count
-                    if (col === 4) return 110   // cost per person
+                    if (col === 1) return 55    // qty
+                    if (col === 2) return 100   // unit price
+                    if (col === 3) return 50    // SC?
+                    if (col === 4) return 50    // SST?
+                    if (col === 5) return showDetails ? 80  : 0   // split count
+                    if (col === 6) return showDetails ? 110 : 0   // cost per person
                     return 80                   // person columns
                 }
                 rowHeightProvider: function() { return 28 }
@@ -309,8 +335,8 @@ ApplicationWindow {
                         anchors.margins: 2
 
                         sourceComponent: {
-                            if (cellDelegate.column === 0 || cellDelegate.column === 1) return textCell
-                            if (cellDelegate.column === 3 || cellDelegate.column === 4) return readOnlyCell
+                            if (cellDelegate.column === 0 || cellDelegate.column === 1 || cellDelegate.column === 2) return textCell
+                            if (cellDelegate.column === 5 || cellDelegate.column === 6) return readOnlyCell
                             return checkCell
                         }
                     }
@@ -353,7 +379,7 @@ ApplicationWindow {
                             Binding {
                                 target: cellTf
                                 property: "text"
-                                value: cellDelegate.column === 1
+                                value: cellDelegate.column === 2
                                        ? (cellDelegate.display ?? 0).toFixed(2)
                                        : (cellDelegate.display ?? "").toString()
                                 when: !cellTf.activeFocus
@@ -389,7 +415,7 @@ ApplicationWindow {
                         id: readOnlyCell
                         Label {
                             anchors.centerIn: parent
-                            text: cellDelegate.column === 3
+                            text: cellDelegate.column === 5
                                   ? (cellDelegate.display ?? 0).toString()
                                   : (cellDelegate.display ?? 0).toFixed(2)
                             font.pixelSize: 12
@@ -406,6 +432,13 @@ ApplicationWindow {
             Button {
                 text: "+ Add Item"
                 onClicked: calculator.addItem()
+            }
+            Button {
+                text: showDetails ? "Hide Details" : "Show Details"
+                onClicked: {
+                    showDetails = !showDetails
+                    tableBody.forceLayout()
+                }
             }
             Item { Layout.fillWidth: true }
             Button {
@@ -427,7 +460,6 @@ ApplicationWindow {
                     payToField.text       = ""
                     serviceChargeField.text = calculator.serviceChargePct.toFixed(0) + "%"
                     sstField.text         = calculator.sstPct.toFixed(0) + "%"
-                    discountModeBox.currentIndex = 0
                     receiptAmtField.text  = "0.00"
                 }
             }

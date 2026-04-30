@@ -50,14 +50,6 @@ void LunchCalculator::setSstPct(double v)
     recalculate();
 }
 
-void LunchCalculator::setDiscountMode(int v)
-{
-    if (m_discountMode == v) return;
-    m_discountMode = v;
-    emit discountModeChanged();
-    recalculate();
-}
-
 void LunchCalculator::setReceiptAmt(double v)
 {
     if (qFuzzyCompare(m_receiptAmt, v)) return;
@@ -102,7 +94,8 @@ void LunchCalculator::reset()
     m_serviceCharge = 0.0;
     m_sst           = 0.0;
     m_grandTotal    = 0.0;
-    m_discountMode  = 0;
+    m_allSC         = false;
+    m_allSST        = false;
     m_personTotals.clear();
 
     emit placeChanged();
@@ -110,27 +103,10 @@ void LunchCalculator::reset()
     emit payToChanged();
     emit receiptAmtChanged();
     emit personsChanged();
-    emit discountModeChanged();
     emit totalsChanged();
 }
 
 // ── Core calculation ──────────────────────────────────────────────────────
-//
-//  Split logic:
-//  For each item, find how many persons ordered it.
-//  Each person who ordered it pays: item.price / ordererCount
-//  Negative prices (vouchers) are split among all persons who have the
-//  voucher row ticked — same mechanism, works naturally.
-//
-//  discountMode == 0  (Unified):
-//    SC and SST share the same taxable base — current default behaviour.
-//    Taxable discount items reduce both bases equally.
-//
-//  discountMode == 1  (SST Only):
-//    SC base  = positive taxable items only  (pre-discount)
-//    SST base = all taxable items            (post-discount)
-//    This replicates the common Malaysian restaurant pattern where the
-//    restaurant's discount reduces SST but not service charge.
 
 void LunchCalculator::recalculate()
 {
@@ -139,8 +115,8 @@ void LunchCalculator::recalculate()
     const int               nPersons = persons.size();
 
     QList<double> foodShare(nPersons, 0.0);
-    QList<double> scShare  (nPersons, 0.0);   // per-person SC taxable share
-    QList<double> sstShare (nPersons, 0.0);   // per-person SST taxable share
+    QList<double> scShare  (nPersons, 0.0);
+    QList<double> sstShare (nPersons, 0.0);
 
     double totalFood    = 0.0;
     double totalSCBase  = 0.0;
@@ -153,27 +129,34 @@ void LunchCalculator::recalculate()
 
         if (orderers == 0) continue;
 
-        const double share = item.price / orderers;
-        const bool inSCBase = item.taxable &&
-                              (m_discountMode == 0 || item.price >= 0.0);
+        const double effectivePrice = item.qty * item.price;
+        const double share = effectivePrice / orderers;
 
         for (int p = 0; p < nPersons && p < item.personOrders.size(); ++p) {
             if (item.personOrders.at(p)) {
                 foodShare[p] += share;
-                if (inSCBase)    scShare [p] += share;
-                if (item.taxable) sstShare[p] += share;
+                if (item.scChargeable) scShare [p] += share;
+                if (item.taxable)      sstShare[p] += share;
             }
         }
 
-        totalFood += item.price;
-        if (inSCBase)     totalSCBase  += item.price;
-        if (item.taxable) totalSSTBase += item.price;
+        totalFood += effectivePrice;
+        if (item.scChargeable) totalSCBase  += effectivePrice;
+        if (item.taxable)      totalSSTBase += effectivePrice;
     }
 
     m_subtotal      = totalFood;
     m_serviceCharge = totalSCBase  * (m_serviceChargePct / 100.0);
     m_sst           = totalSSTBase * (m_sstPct           / 100.0);
     m_grandTotal    = m_subtotal + m_serviceCharge + m_sst;
+
+    bool allSC = !items.isEmpty(), allSST = !items.isEmpty();
+    for (const LunchItem &item : items) {
+        if (!item.scChargeable) allSC  = false;
+        if (!item.taxable)      allSST = false;
+    }
+    m_allSC  = allSC;
+    m_allSST = allSST;
 
     m_personTotals.clear();
     for (int p = 0; p < nPersons; ++p) {

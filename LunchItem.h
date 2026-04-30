@@ -5,8 +5,10 @@
 
 struct LunchItem {
     QString name;
-    double  price       = 0.0;
-    bool    taxable     = false;    // subject to SST?
+    int     qty          = 1;
+    double  price        = 0.0;     // unit price
+    bool    scChargeable = true;    // subject to service charge?
+    bool    taxable      = false;   // subject to SST?
 
     // One bool per person: did this person order this item?
     // Index matches LunchCalculator::m_persons

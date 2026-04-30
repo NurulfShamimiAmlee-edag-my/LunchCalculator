@@ -2,11 +2,13 @@
 
 // ── Static column indices ──────────────────────────────────────────────────
 static constexpr int COL_NAME         = 0;
-static constexpr int COL_PRICE        = 1;
-static constexpr int COL_TAXABLE      = 2;
-static constexpr int COL_SPLIT_COUNT  = 3;   // read-only, auto-calculated
-static constexpr int COL_COST_PERSON  = 4;   // read-only, auto-calculated
-static constexpr int FIXED_COLS       = 5;   // columns before person columns begin
+static constexpr int COL_QTY          = 1;
+static constexpr int COL_PRICE        = 2;   // unit price
+static constexpr int COL_SC           = 3;   // subject to service charge?
+static constexpr int COL_SST          = 4;   // subject to SST?
+static constexpr int COL_SPLIT_COUNT  = 5;   // read-only, auto-calculated
+static constexpr int COL_COST_PERSON  = 6;   // read-only, auto-calculated
+static constexpr int FIXED_COLS       = 7;   // columns before person columns begin
 
 LunchModel::LunchModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -37,15 +39,17 @@ QVariant LunchModel::data(const QModelIndex &index, int role) const
     const int col = index.column();
 
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
-        if (col == COL_NAME)    return item.name;
-        if (col == COL_PRICE)   return item.price;
-        if (col == COL_TAXABLE) return item.taxable;
+        if (col == COL_NAME)  return item.name;
+        if (col == COL_QTY)   return item.qty;
+        if (col == COL_PRICE) return item.price;
+        if (col == COL_SC)    return item.scChargeable;
+        if (col == COL_SST)   return item.taxable;
         if (col == COL_SPLIT_COUNT) {
             return splitCountForRow(index.row());
         }
         if (col == COL_COST_PERSON) {
             int sc = splitCountForRow(index.row());
-            return sc > 0 ? item.price / sc : 0.0;
+            return sc > 0 ? (item.qty * item.price) / sc : 0.0;
         }
         if (isPersonColumn(col)) {
             int pi = personIndexFromColumn(col);
@@ -69,9 +73,13 @@ bool LunchModel::setData(const QModelIndex &index, const QVariant &value, int ro
 
     if (col == COL_NAME) {
         item.name = value.toString();
+    } else if (col == COL_QTY) {
+        item.qty = qMax(1, value.toInt());
     } else if (col == COL_PRICE) {
         item.price = value.toDouble();
-    } else if (col == COL_TAXABLE) {
+    } else if (col == COL_SC) {
+        item.scChargeable = value.toBool();
+    } else if (col == COL_SST) {
         item.taxable = value.toBool();
     } else if (col == COL_SPLIT_COUNT || col == COL_COST_PERSON) {
         return false;   // read-only, auto-calculated
@@ -85,8 +93,12 @@ bool LunchModel::setData(const QModelIndex &index, const QVariant &value, int ro
 
     emit dataChanged(index, index, {Qt::DisplayRole, Qt::EditRole});
 
-    // If a person checkbox changed, the split count and cost per person
-    // columns are also affected — notify them so the view refreshes.
+    // Qty or price change affects cost per person; person checkbox change
+    // also affects split count.
+    if (col == COL_QTY || col == COL_PRICE) {
+        QModelIndex costIdx = createIndex(index.row(), COL_COST_PERSON);
+        emit dataChanged(costIdx, costIdx, {Qt::DisplayRole});
+    }
     if (isPersonColumn(col)) {
         QModelIndex splitIdx = createIndex(index.row(), COL_SPLIT_COUNT);
         QModelIndex costIdx  = createIndex(index.row(), COL_COST_PERSON);
@@ -106,8 +118,10 @@ QVariant LunchModel::headerData(int section, Qt::Orientation orientation, int ro
     if (orientation == Qt::Vertical) return section + 1;
 
     if (section == COL_NAME)         return "Item";
-    if (section == COL_PRICE)        return "Price (MYR)";
-    if (section == COL_TAXABLE)      return "Tax?";
+    if (section == COL_QTY)          return "Qty";
+    if (section == COL_PRICE)        return "Unit Price";
+    if (section == COL_SC)           return "SC?";
+    if (section == COL_SST)          return "SST?";
     if (section == COL_SPLIT_COUNT)  return "Split Count";
     if (section == COL_COST_PERSON)  return "Cost per Person";
     if (isPersonColumn(section))
@@ -208,6 +222,28 @@ void LunchModel::clear()
     m_items.clear();
     m_persons.clear();
     endResetModel();
+    emit dataModified();
+}
+
+void LunchModel::setAllSC(bool v)
+{
+    for (LunchItem &item : m_items)
+        item.scChargeable = v;
+    if (!m_items.isEmpty())
+        emit dataChanged(createIndex(0, COL_SC),
+                         createIndex(m_items.size() - 1, COL_SC),
+                         {Qt::DisplayRole, Qt::EditRole});
+    emit dataModified();
+}
+
+void LunchModel::setAllSST(bool v)
+{
+    for (LunchItem &item : m_items)
+        item.taxable = v;
+    if (!m_items.isEmpty())
+        emit dataChanged(createIndex(0, COL_SST),
+                         createIndex(m_items.size() - 1, COL_SST),
+                         {Qt::DisplayRole, Qt::EditRole});
     emit dataModified();
 }
 

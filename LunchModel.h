@@ -7,11 +7,13 @@
 // ---------------------------------------------------------------------------
 //  Column layout
 //  Col 0        : Item name          (QString, editable)
-//  Col 1        : Price              (double,  editable)
-//  Col 2        : Taxable?           (bool,    editable)
-//  Col 3        : Split Count        (int,     read-only, auto-calculated)
-//  Col 4        : Cost per Person    (double,  read-only, auto-calculated)
-//  Col 5 .. N+4 : Person[0..N-1]    (bool,    editable)
+//  Col 1        : Qty                (int,     editable)
+//  Col 2        : Unit Price         (double,  editable)
+//  Col 3        : SC?                (bool,    editable)   — service charge
+//  Col 4        : SST?               (bool,    editable)   — sales & service tax
+//  Col 5        : Split Count        (int,     read-only, auto-calculated)
+//  Col 6        : Cost per Person    (double,  read-only, auto-calculated)
+//  Col 7 .. N+6 : Person[0..N-1]    (bool,    editable)
 // ---------------------------------------------------------------------------
 
 class LunchModel : public QAbstractTableModel
@@ -49,6 +51,8 @@ public:
     // ── Item management ───────────────────────────────────────────────────
     Q_INVOKABLE void addItem   ();
     Q_INVOKABLE void removeItem(int row);
+    Q_INVOKABLE void setAllSC (bool v);
+    Q_INVOKABLE void setAllSST(bool v);
     void clear();
 
     // ── Read-only accessors used by LunchCalculator for totals ────────────
