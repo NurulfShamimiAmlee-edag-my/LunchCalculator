@@ -34,7 +34,13 @@ int main(int argc, char *argv[])
     calculator.addItem();   // users will fill these in
     calculator.addItem();
 
-    const QUrl url(u"qrc:/qt/qml/LunchCalculatorContent/App.qml"_qs);
+    const QUrl url(
+#ifdef Q_OS_ANDROID
+        u"qrc:/qt/qml/LunchCalculatorContent/AppAndroid.qml"_qs
+#else
+        u"qrc:/qt/qml/LunchCalculatorContent/App.qml"_qs
+#endif
+    );
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed,
         &app,    &QGuiApplication::quit,

@@ -47,8 +47,12 @@ class LunchCalculator : public QObject
     // ── Per-person totals (serialised as QVariantList for QML) ────────────
     Q_PROPERTY(QVariantList personTotals READ personTotals  NOTIFY totalsChanged)
 
+    // ── Items data (serialised as QVariantList for QML) ───────────────────
+    Q_PROPERTY(QVariantList itemsData    READ itemsData     NOTIFY totalsChanged)
+    Q_PROPERTY(int          itemCount    READ itemCount     NOTIFY totalsChanged)
+
     // ── Person list (names only, for column headers / person management) ──
-    Q_PROPERTY(QStringList persons      READ persons         NOTIFY personsChanged)
+    Q_PROPERTY(QStringList persons       READ persons       NOTIFY personsChanged)
 
 public:
     explicit LunchCalculator(QObject *parent = nullptr);
@@ -72,6 +76,8 @@ public:
 
     QVariantList personTotals() const { return m_personTotals; }
     QStringList  persons()      const { return m_model->persons(); }
+    QVariantList itemsData()    const;
+    int          itemCount()    const { return m_model->rowCount({}); }
 
     // ── Property setters ──────────────────────────────────────────────────
     void setPlace         (const QString &v);
@@ -89,6 +95,8 @@ public:
     // ── Convenience pass-through for item management ───────────────────────
     Q_INVOKABLE void addItem   ()         { m_model->addItem();    }
     Q_INVOKABLE void removeItem(int row)  { m_model->removeItem(row); }
+    Q_INVOKABLE void updateItem(int row, const QString &name, int qty, double price,
+                                bool sc, bool taxable, const QVariantList &personOrders);
     Q_INVOKABLE void reset();
 
 signals:

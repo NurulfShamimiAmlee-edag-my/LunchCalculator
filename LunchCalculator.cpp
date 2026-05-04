@@ -80,6 +80,40 @@ void LunchCalculator::renamePerson(int index, const QString &name)
     emit personsChanged();
 }
 
+// ── Item data access (for Android QML) ───────────────────────────────────
+
+QVariantList LunchCalculator::itemsData() const
+{
+    QVariantList result;
+    for (const LunchItem &item : m_model->items()) {
+        QVariantList orders;
+        for (bool b : item.personOrders) orders << b;
+        result << QVariantMap{
+            {"name",         item.name},
+            {"qty",          item.qty},
+            {"price",        item.price},
+            {"sc",           item.scChargeable},
+            {"taxable",      item.taxable},
+            {"personOrders", orders}
+        };
+    }
+    return result;
+}
+
+void LunchCalculator::updateItem(int row, const QString &name, int qty, double price,
+                                 bool sc, bool taxable, const QVariantList &personOrders)
+{
+    auto *m = m_model;
+    m->setData(m->index(row, 0), name,    Qt::EditRole);
+    m->setData(m->index(row, 1), qty,     Qt::EditRole);
+    m->setData(m->index(row, 2), price,   Qt::EditRole);
+    m->setData(m->index(row, 3), sc,      Qt::EditRole);
+    m->setData(m->index(row, 4), taxable, Qt::EditRole);
+    const int personCount = m_model->persons().size();
+    for (int i = 0; i < personOrders.size() && i < personCount; ++i)
+        m->setData(m->index(row, 7 + i), personOrders[i].toBool(), Qt::EditRole);
+}
+
 // ── Reset ─────────────────────────────────────────────────────────────────
 
 void LunchCalculator::reset()

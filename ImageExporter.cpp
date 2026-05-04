@@ -41,9 +41,15 @@ void ImageExporter::grabAndSave(QQuickItem *item, const QString &path)
 
 QString ImageExporter::defaultSavePath(const QString &place, const QString &date) const
 {
-    QString desktop = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-    QString name    = place.isEmpty() ? "LunchBill" : place;
+    QString name = place.isEmpty() ? "LunchBill" : place;
     name += "_" + date;
     name.replace(QRegularExpression(R"([/\\:*?"<>|])"), "_");
-    return QDir(desktop).filePath(name + ".png");
+
+#ifdef Q_OS_ANDROID
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+#else
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+#endif
+    QDir().mkpath(dir);
+    return QDir(dir).filePath(name + ".png");
 }

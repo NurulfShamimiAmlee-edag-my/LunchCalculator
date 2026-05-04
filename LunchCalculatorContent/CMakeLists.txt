@@ -10,6 +10,7 @@ qt6_add_qml_module(LunchCalculatorContent
     RESOURCE_PREFIX "/qt/qml"
     QML_FILES
         "App.qml"
+        "AppAndroid.qml"
         "PersonNames.qml"
 )
 
